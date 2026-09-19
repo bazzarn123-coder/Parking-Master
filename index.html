@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mobile Parking Master 2D</title>
+    <!-- Standard Favicon -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <!-- Fallback / Browser Tab Icon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23ef4444'/><rect x='20' y='15' width='60' height='30' rx='5' fill='%230f172a'/><rect x='25' y='60' width='50' height='25' rx='5' fill='%230f172a'/><circle cx='25' cy='10' r='5' fill='%23fde047'/><circle cx='75' cy='10' r='5' fill='%23fde047'/></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: #0f172a;
+            color: #f8fafc;
+            font-family: system-ui, -apple-system, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            overflow: hidden;
+            padding-top: env(safe-area-inset-top, 10px);
+            padding-bottom: env(safe-area-inset-bottom, 10px);
+        }
+        canvas {
+            box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.8);
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-start h-screen w-screen px-3 pt-1 pb-4 box-border gap-2">
+
+    <!-- Top Header / UI Overlay -->
+    <div class="w-full max-w-sm flex justify-between items-center bg-slate-800/90 backdrop-blur px-3.5 py-2 rounded-2xl shadow-lg border border-slate-700 shrink-0">
+        <div>
+            <h1 class="text-xs font-bold tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <svg class="w-4 h-4 fill-emerald-400" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4h14v4z"/></svg>
+                PARKING MASTER
+            </h1>
+            <p id="level-indicator" class="text-xs text-slate-300 font-semibold">Level 1 (Endless)</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="flex gap-1.5 text-xs font-semibold">
+                <div class="bg-slate-900 px-2 py-1 rounded-xl border border-slate-700">
+                    <span id="timer" class="text-cyan-400">0.0s</span>
+                </div>
+                <div class="bg-slate-900 px-2 py-1 rounded-xl border border-slate-700">
+                    <span id="crashes" class="text-red-400">0/3</span>
+                </div>
+            </div>
+            <button onclick="openLevelSelect()" class="bg-amber-600/90 active:bg-amber-500 text-white text-xs font-bold px-2 py-1.5 rounded-xl border border-amber-500 shadow">
+                LVLS
+            </button>
+            <button onclick="resetGame()" class="bg-rose-600/90 active:bg-rose-500 text-white text-xs font-bold px-2 py-1.5 rounded-xl border border-rose-500 shadow">
+                RESET
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Game Canvas Container (Moved up with -mt-3 and z-10) -->
+    <div class="relative bg-slate-900 p-2 rounded-2xl shadow-2xl border border-slate-800 shrink-0 -mt-3 z-10">
+        <canvas id="gameCanvas" width="360" height="400" class="rounded-xl bg-slate-950 block"></canvas>
+
+        <!-- Main Menu / Win / Over Overlay -->
+        <div id="overlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center rounded-xl p-6 text-center z-10 transition-opacity duration-300">
+            <h2 id="overlay-title" class="text-2xl font-extrabold text-white mb-2">PARKING MASTER</h2>
+            <p id="overlay-desc" class="text-xs text-slate-400 mb-6 max-w-xs leading-relaxed">Multiple bays exist, but only ONE matches your target color and is accessible. Find the path, avoid colored traffic, and park!</p>
+            <div class="flex gap-3">
+                <button id="overlay-btn" onclick="handleOverlayButtonClick()" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-bold px-6 py-3.5 rounded-xl shadow-lg text-sm transform active:scale-95">
+                    NEW GAME
+                </button>
+                <button id="resume-btn" onclick="resumeGame()" class="hidden bg-cyan-500 active:bg-cyan-400 text-slate-950 font-bold px-6 py-3.5 rounded-xl shadow-lg text-sm transform active:scale-95">
+                    RESUME
+                </button>
+            </div>
+        </div>
+
+        <!-- Level Selector Modal -->
+        <div id="level-modal" class="hidden absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-between rounded-xl p-4 text-center z-20">
+            <div class="w-full">
+                <h2 class="text-lg font-bold text-emerald-400 mb-1">Select Level</h2>
+                <p class="text-xs text-slate-400 mb-3">Jump to any level in this endless puzzle:</p>
+            </div>
+            <div id="level-grid" class="grid grid-cols-5 gap-2 w-full max-h-60 overflow-y-auto custom-scroll p-1">
+                <!-- Level buttons inserted dynamically -->
+            </div>
+            <button onclick="closeLevelSelect()" class="mt-3 bg-slate-800 active:bg-slate-700 text-slate-200 text-xs font-bold px-6 py-2.5 rounded-xl border border-slate-700 w-full">
+                CLOSE
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Touch Controls Layout -->
+    <div class="w-full max-w-sm grid grid-cols-2 gap-4 mt-0 shrink-0">
+        <!-- Steering Controls (Left) -->
+        <div class="grid grid-cols-2 gap-2">
+            <button id="btn-left" class="h-14 bg-slate-800/90 border border-slate-700 rounded-2xl flex items-center justify-center text-3xl active:bg-emerald-500 active:text-slate-950 shadow-md">◀</button>
+            <button id="btn-right" class="h-14 bg-slate-800/90 border border-slate-700 rounded-2xl flex items-center justify-center text-3xl active:bg-emerald-500 active:text-slate-950 shadow-md">▶</button>
+        </div>
+        <!-- Pedals Controls (Right) -->
+        <div class="grid grid-cols-2 gap-2">
+            <button id="btn-down" class="h-14 bg-slate-800/90 border border-slate-700 rounded-2xl flex items-center justify-center text-xl active:bg-rose-500 active:text-slate-950 shadow-md">REV</button>
+            <button id="btn-up" class="h-14 bg-emerald-600/90 border border-emerald-500 rounded-2xl flex items-center justify-center text-xl active:bg-emerald-400 active:text-slate-950 shadow-md font-bold">GAS</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Sound Effects via Web Audio API
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+                if (type === 'engine') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(60, now);
+                    osc.frequency.linearRampToValueAtTime(100, now + 0.1);
+                    gain.gain.setValueAtTime(0.04, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'crash') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(120, now);
+                    osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'win') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(554.37, now + 0.1);
+                    osc.frequency.setValueAtTime(659.25, now + 0.2);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                }
+            } catch (e) {}
+        }
+
+        // Car Dimensions
+        const CAR_W = 24;
+        const CAR_H = 44;
+
+        // Player Car Object
+        let car = {
+            x: 0, y: 0, width: CAR_W, height: CAR_H, angle: 0,
+            speed: 0, maxSpeed: 3.2, reverseSpeed: -1.5,
+            acceleration: 0.1, friction: 0.04, steerSpeed: 0.05
+        };
+
+        // Game State Variables
+        let gameState = 'MENU';
+        let currentLevelIndex = 0;
+        let maxLevelReached = parseInt(localStorage.getItem('maxLevelReached')) || 0; // Tracks highest level reached
+        let activeLevelData = null;
+        let startTime = 0;
+        let elapsedTime = 0;
+        let crashes = 0;
+        const maxCrashes = 3;
+        let animationFrameId = null;
+
+        // Touch Control States
+        const touchInputs = { up: false, down: false, left: false, right: false };
+
+        const bindTouch = (id, keyName) => {
+            const el = document.getElementById(id);
+            const handleStart = (e) => { e.preventDefault(); touchInputs[keyName] = true; initAudio(); };
+            const handleEnd = (e) => { e.preventDefault(); touchInputs[keyName] = false; };
+
+            el.addEventListener('touchstart', handleStart, { passive: false });
+            el.addEventListener('touchend', handleEnd, { passive: false });
+            el.addEventListener('touchcancel', handleEnd, { passive: false });
+            el.addEventListener('mousedown', handleStart);
+            el.addEventListener('mouseup', handleEnd);
+            el.addEventListener('mouseleave', handleEnd);
+        };
+
+        bindTouch('btn-up', 'up');
+        bindTouch('btn-down', 'down');
+        bindTouch('btn-left', 'left');
+        bindTouch('btn-right', 'right');
+
+        // Check for saved progress when the game loads
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLevel = localStorage.getItem('currentLevelIndex');
+            if (savedLevel !== null && parseInt(savedLevel) > 0) {
+                document.getElementById('resume-btn').classList.remove('hidden');
+                document.getElementById('overlay-btn').innerText = 'RESTART';
+            }
+        });
+
+        // Color Palette for Multi-Colored Bays and Cars
+        const PALETTE = [
+            { name: 'emerald', hex: '#10b981', fill: 'rgba(16, 185, 129, 0.2)', border: '#10b981' },
+            { name: 'cyan', hex: '#06b6d4', fill: 'rgba(6, 182, 212, 0.2)', border: '#06b6d4' },
+            { name: 'amber', hex: '#f59e0b', fill: 'rgba(245, 158, 11, 0.2)', border: '#f59e0b' },
+            { name: 'purple', hex: '#a855f7', fill: 'rgba(168, 85, 247, 0.2)', border: '#a855f7' },
+            { name: 'rose', hex: '#f43f5e', fill: 'rgba(244, 63, 94, 0.2)', border: '#f43f5e' }
+        ];
+
+        const CAR_COLORS = [
+            { main: '#eab308', stroke: '#ca8a04' },
+            { main: '#06b6d4', stroke: '#0891b2' },
+            { main: '#a855f7', stroke: '#7e22ce' },
+            { main: '#f97316', stroke: '#c2410c' },
+            { main: '#ec4899', stroke: '#be185d' },
+            { main: '#84cc16', stroke: '#4d7c0f' },
+            { main: '#94a3b8', stroke: '#475569' }
+        ];
+
+        // Seeded Pseudo-Random Number Generator for consistent endless levels
+        function pseudoRandom(seed) {
+            let x = Math.sin(seed++) * 10000;
+            return x - Math.floor(x);
+        }
+
+        // Rectangular overlap helper with customizable padding
+        function rectsOverlap(r1, r2, padding = 10) {
+            return !(r1.x + r1.w + padding < r2.x - padding ||
+                     r1.x - padding > r2.x + r2.w + padding ||
+                     r1.y + r1.h + padding < r2.y - padding ||
+                     r1.y - padding > r2.y + r2.h + padding);
+        }
+
+        // Endless Procedural Level Generator
+        function generateLevel(levelIdx) {
+            let seed = (levelIdx + 1) * 15485863;
+            const rand = () => pseudoRandom(seed++);
+
+            const goalW = 32;
+            const goalH = 60;
+
+            const gridSlots = [
+                { x: 50, y: 50 },  { x: 180, y: 50 },  { x: 310, y: 50 },
+                { x: 50, y: 180 }, { x: 180, y: 180 }, { x: 310, y: 180 },
+                { x: 50, y: 340 }, { x: 180, y: 340 }, { x: 310, y: 340 }
+            ];
+
+            const slots = [...gridSlots].sort(() => rand() - 0.5);
+
+            const spawnPos = slots.pop();
+            const spawnRect = { x: spawnPos.x - CAR_W/2, y: spawnPos.y - CAR_H/2, w: CAR_W, h: CAR_H };
+
+            const numBays = Math.min(2 + Math.floor(levelIdx / 3), 5);
+            const bays = [];
+
+            for (let b = 0; b < numBays; b++) {
+                const pos = slots.pop();
+                const colorScheme = PALETTE[b % PALETTE.length];
+                bays.push({
+                    id: b,
+                    x: pos.x - goalW / 2,
+                    y: pos.y - goalH / 2,
+                    width: goalW,
+                    height: goalH,
+                    angle: 0,
+                    color: colorScheme,
+                    isTarget: (b === 0)
+                });
+            }
+
+            bays.sort(() => rand() - 0.5);
+            const targetBay = bays.find(b => b.isTarget);
+
+            const obstacles = [];
+            const bayRects = bays.map(b => ({ x: b.x, y: b.y, w: b.width, h: b.height }));
+
+            for (let b of bays) {
+                if (!b.isTarget) {
+                    const side = rand() > 0.5 ? -1 : 1;
+                    const frameX = b.x + (side === -1 ? -CAR_W - 6 : b.width + 6);
+                    const frameY = b.y + (b.height - CAR_H) / 2;
+                    const obsColor = CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)];
+                    const frameRect = { x: frameX, y: frameY, w: CAR_W, h: CAR_H };
+
+                    if (frameX >= 10 && frameX + CAR_W <= 350 && frameY >= 10 && frameY + CAR_H <= 390) {
+                        let ok = !rectsOverlap(frameRect, spawnRect, 20);
+                        for (let br of bayRects) {
+                            if (rectsOverlap(frameRect, br, 6)) ok = false;
+                        }
+                        if (ok) obstacles.push({ x: frameX, y: frameY, color: obsColor });
+                    }
+                }
+            }
+
+            const obstacleCount = Math.min(4 + Math.floor(levelIdx / 2), 16);
+            let attempts = 0;
+
+            while (obstacles.length < obstacleCount && attempts < 150) {
+                attempts++;
+                const ox = 30 + Math.floor(rand() * 280);
+                const oy = 40 + Math.floor(rand() * 310);
+                const obsRect = { x: ox, y: oy, w: CAR_W, h: CAR_H };
+                const obsColor = CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)];
+
+                let overlapsBay = false;
+                for (let br of bayRects) {
+                    if (rectsOverlap(obsRect, br, 12)) {
+                        overlapsBay = true;
+                        break;
+                    }
+                }
+
+                if (overlapsBay || rectsOverlap(obsRect, spawnRect, 25)) continue;
+
+                let overlapsOther = false;
+                for (let existing of obstacles) {
+                    const eRect = { x: existing.x, y: existing.y, w: CAR_W, h: CAR_H };
+                    if (rectsOverlap(obsRect, eRect, 8)) {
+                        overlapsOther = true;
+                        break;
+                    }
+                }
+
+                if (!overlapsOther) {
+                    obstacles.push({ x: ox, y: oy, color: obsColor });
+                }
+            }
+
+            return {
+                levelIndex: levelIdx,
+                spawn: { x: spawnPos.x, y: spawnPos.y, angle: 0 },
+                targetColor: targetBay.color,
+                bays: bays,
+                obstacles: obstacles
+            };
+        }
+
+        function buildLevelGrid() {
+            const grid = document.getElementById('level-grid');
+            grid.innerHTML = '';
+            for (let i = 0; i < 200; i++) {
+                const isUnlocked = i <= maxLevelReached;
+                const btn = document.createElement('button');
+                btn.className = `py-2 rounded-lg font-bold text-xs border ${
+                    i === currentLevelIndex 
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400' 
+                    : isUnlocked 
+                        ? 'bg-slate-800 text-slate-300 border-slate-700 active:bg-slate-700'
+                        : 'bg-slate-900 text-slate-700 border-slate-800 cursor-not-allowed opacity-50'
+                }`;
+                btn.innerText = i + 1;
+                
+                if (isUnlocked) {
+                    btn.onclick = () => {
+                        closeLevelSelect();
+                        loadLevel(i);
+                        gameState = 'PLAYING';
+                        document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
+                        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                        animationFrameId = requestAnimationFrame(gameLoop);
+                    };
+                }
+                grid.appendChild(btn);
+            }
+        }
+
+        function openLevelSelect() {
+            buildLevelGrid();
+            document.getElementById('level-modal').classList.remove('hidden');
+        }
+
+        function closeLevelSelect() {
+            document.getElementById('level-modal').classList.add('hidden');
+        }
+
+        function loadLevel(lvlIndex) {
+            currentLevelIndex = lvlIndex;
+            activeLevelData = generateLevel(currentLevelIndex);
+
+            car.x = activeLevelData.spawn.x;
+            car.y = activeLevelData.spawn.y;
+            car.angle = activeLevelData.spawn.angle;
+            car.speed = 0;
+            crashes = 0;
+            startTime = Date.now();
+
+            document.getElementById('level-indicator').innerText = `Level ${currentLevelIndex + 1} (Endless)`;
+            document.getElementById('crashes').innerText = `${crashes}/${maxCrashes}`;
+        }
+
+        function startGame() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            initAudio();
+            loadLevel(0);
+            gameState = 'PLAYING';
+            document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+        
+        function resumeGame() {
+            initAudio();
+            const savedLevel = parseInt(localStorage.getItem('currentLevelIndex')) || 0;
+            loadLevel(savedLevel);
+            gameState = 'PLAYING';
+            document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function resetGame() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            touchInputs.up = false;
+            touchInputs.down = false;
+            touchInputs.left = false;
+            touchInputs.right = false;
+            loadLevel(currentLevelIndex);
+            gameState = 'PLAYING';
+            document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function showOverlay(title, desc, btnText) {
+            const overlay = document.getElementById('overlay');
+            document.getElementById('overlay-title').innerText = title;
+            document.getElementById('overlay-desc').innerText = desc;
+            document.getElementById('overlay-btn').innerText = btnText;
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function handleOverlayButtonClick() {
+            initAudio();
+            if (gameState === 'MENU') {
+                startGame();
+            } else if (gameState === 'GAMEOVER') {
+                loadLevel(currentLevelIndex);
+                gameState = 'PLAYING';
+                document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                animationFrameId = requestAnimationFrame(gameLoop);
+            } else if (gameState === 'LEVEL_CLEAR') {
+                loadLevel(currentLevelIndex + 1);
+                gameState = 'PLAYING';
+                document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function getCarCorners() {
+            const cos = Math.cos(car.angle);
+            const sin = Math.sin(car.angle);
+            const w2 = car.width / 2;
+            const h2 = car.height / 2;
+
+            const corners = [
+                { x: -w2, y: -h2 },
+                { x: w2, y: -h2 },
+                { x: w2, y: h2 },
+                { x: -w2, y: h2 }
+            ];
+
+            return corners.map(c => ({
+                x: car.x + (c.x * cos - c.y * sin),
+                y: car.y + (c.x * sin + c.y * cos)
+            }));
+        }
+
+        function checkCollision() {
+            const corners = getCarCorners();
+
+            for (let p of corners) {
+                if (p.x < 4 || p.x > canvas.width - 4 || p.y < 4 || p.y > canvas.height - 4) {
+                    return true;
+                }
+            }
+
+            for (let obs of activeLevelData.obstacles) {
+                for (let p of corners) {
+                    if (p.x >= obs.x && p.x <= obs.x + CAR_W && p.y >= obs.y && p.y <= obs.y + CAR_H) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function checkParkingGoal() {
+            const targetBay = activeLevelData.bays.find(b => b.isTarget);
+            if (!targetBay) return false;
+
+            const inBounds = car.x >= targetBay.x && car.x <= targetBay.x + targetBay.width &&
+                             car.y >= targetBay.y && car.y <= targetBay.y + targetBay.height;
+
+            if (!inBounds) return false;
+
+            let angleDiff = Math.abs(car.angle - targetBay.angle) % (Math.PI * 2);
+            if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+
+            const isStopped = Math.abs(car.speed) < 0.2;
+            return angleDiff < 0.45 && isStopped;
+        }
+
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            if (touchInputs.up) {
+                car.speed += car.acceleration;
+                if (car.speed > car.maxSpeed) car.speed = car.maxSpeed;
+                playSound('engine');
+            } else if (touchInputs.down) {
+                car.speed -= car.acceleration;
+                if (car.speed < car.reverseSpeed) car.speed = car.reverseSpeed;
+            } else {
+                car.speed *= (1 - car.friction);
+            }
+
+            if (Math.abs(car.speed) > 0.05) {
+                const steerFactor = car.speed / car.maxSpeed;
+                if (touchInputs.left) car.angle -= car.steerSpeed * Math.sign(car.speed) * Math.min(Math.abs(steerFactor), 1);
+                if (touchInputs.right) car.angle += car.steerSpeed * Math.sign(car.speed) * Math.min(Math.abs(steerFactor), 1);
+            }
+
+            car.x += Math.sin(car.angle) * car.speed;
+            car.y -= Math.cos(car.angle) * car.speed;
+
+            if (checkCollision()) {
+                playSound('crash');
+                car.x -= Math.sin(car.angle) * car.speed * 2.5;
+                car.y += Math.cos(car.angle) * car.speed * 2.5;
+                car.speed = -car.speed * 0.3;
+                crashes++;
+                document.getElementById('crashes').innerText = `${crashes}/${maxCrashes}`;
+
+                if (crashes >= maxCrashes) {
+                    gameState = 'GAMEOVER';
+                    showOverlay('Crashed!', 'Too many collisions! Try again.', 'TRY AGAIN');
+                    return;
+                }
+            }
+
+            elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
+            document.getElementById('timer').innerText = `${elapsedTime}s`;
+
+            if (checkParkingGoal()) {
+                playSound('win');
+                gameState = 'LEVEL_CLEAR';
+                
+                // Auto-save progress
+                if (currentLevelIndex >= maxLevelReached) {
+                    maxLevelReached = currentLevelIndex + 1;
+                    localStorage.setItem('maxLevelReached', maxLevelReached);
+                }
+                localStorage.setItem('currentLevelIndex', currentLevelIndex + 1);
+
+                showOverlay(`Level ${currentLevelIndex + 1} Cleared!`, `Awesome parking! Time: ${elapsedTime}s`, 'NEXT LEVEL');
+                
+                // Make sure the resume button shows if they exit to the menu after clearing a level
+                document.getElementById('resume-btn').classList.remove('hidden');
+                document.getElementById('overlay-btn').innerText = 'RESTART';
+            }
+        }
+
+        function drawColoredCar(x, y, colorScheme) {
+            ctx.save();
+            ctx.translate(x + CAR_W / 2, y + CAR_H / 2);
+
+            ctx.fillStyle = colorScheme.main;
+            ctx.strokeStyle = colorScheme.stroke;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(-CAR_W / 2, -CAR_H / 2, CAR_W, CAR_H, 5);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(-CAR_W / 2 + 3, -CAR_H / 2 + 7, CAR_W - 6, 9);
+            ctx.fillRect(-CAR_W / 2 + 4, -CAR_H / 2 + 22, CAR_W - 8, 11);
+
+            ctx.fillStyle = '#fef08a';
+            ctx.fillRect(-CAR_W / 2 + 2, -CAR_H / 2, 4, 3);
+            ctx.fillRect(CAR_W / 2 - 6, -CAR_H / 2, 4, 3);
+
+            ctx.restore();
+        }
+
+        function drawRedPlayerCar() {
+            ctx.save();
+            ctx.translate(car.x, car.y);
+            ctx.rotate(car.angle);
+
+            ctx.fillStyle = '#ef4444';
+            ctx.strokeStyle = '#b91c1c';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(-car.width / 2, -car.height / 2, car.width, car.height, 5);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-car.width / 2 + 3, -car.height / 2 + 7, car.width - 6, 9);
+            ctx.fillRect(-car.width / 2 + 4, -car.height / 2 + 22, car.width - 8, 11);
+
+            ctx.fillStyle = '#fde047';
+            ctx.fillRect(-car.width / 2 + 2, -car.height / 2, 4, 3);
+            ctx.fillRect(car.width / 2 - 6, -car.height / 2, 4, 3);
+
+            ctx.restore();
+        }
+
+        function draw() {
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 30) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+
+            ctx.strokeStyle = '#64748b'; 
+            ctx.lineWidth = 2;
+            ctx.setLineDash([]);
+            ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+
+            if (!activeLevelData) return;
+
+            for (let bay of activeLevelData.bays) {
+                ctx.save();
+                ctx.translate(bay.x + bay.width / 2, bay.y + bay.height / 2);
+                ctx.rotate(bay.angle);
+
+                ctx.fillStyle = bay.color.fill;
+                ctx.strokeStyle = bay.color.border;
+                ctx.lineWidth = bay.isTarget ? 3 : 1.5;
+                ctx.setLineDash(bay.isTarget ? [6, 4] : [3, 3]);
+
+                ctx.fillRect(-bay.width / 2, -bay.height / 2, bay.width, bay.height);
+                ctx.strokeRect(-bay.width / 2, -bay.height / 2, bay.width, bay.height);
+
+                if (bay.isTarget) {
+                    ctx.fillStyle = bay.color.border;
+                    ctx.font = 'bold 10px system-ui';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('TARGET', 0, 4);
+                }
+
+                ctx.restore();
+            }
+
+            for (let obs of activeLevelData.obstacles) {
+                drawColoredCar(obs.x, obs.y, obs.color);
+            }
+
+            drawRedPlayerCar();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            if (gameState === 'PLAYING') {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        loadLevel(0);
+        draw();
+    </script>
+</body>
+</html>
