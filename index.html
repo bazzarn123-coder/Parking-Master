@@ -42,8 +42,8 @@
     <!-- Full Screen Background Image for Main Splash Menu -->
     <img id="full-splash-bg" src="cars.jpg" alt="Parking Master Background" class="fixed inset-0 w-full h-full object-cover object-center z-0 transition-opacity duration-300">
 
-    <!-- Main Splash Screen Overlay (Only buttons over full-screen background) -->
-    <div id="main-menu-overlay" class="fixed inset-0 z-20 flex flex-col items-center justify-end p-6 pb-12 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300">
+    <!-- Main Splash Screen Overlay (Blur and tint removed for crystal clear image) -->
+    <div id="main-menu-overlay" class="fixed inset-0 z-20 flex flex-col items-center justify-end p-6 pb-12 transition-opacity duration-300">
         <div id="mode-buttons" class="flex flex-col gap-3 w-full max-w-xs">
             <button onclick="startMode('SINGLE')" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-black py-4 px-6 rounded-2xl shadow-2xl text-sm md:text-base transform active:scale-95 w-full uppercase tracking-wider border border-emerald-300/40">
                 SINGLE CAR (Endless)
@@ -541,7 +541,6 @@
             initAudio();
             gameMode = mode;
             
-            // Hide splash screen background & overlay, show main game UI
             document.getElementById('main-menu-overlay').classList.add('opacity-0', 'pointer-events-none');
             document.getElementById('full-splash-bg').classList.add('opacity-0');
             document.getElementById('game-ui').classList.remove('hidden');
