@@ -15,12 +15,9 @@
             user-select: none;
             -webkit-user-select: none;
             touch-action: none;
-            overflow-x: hidden;
-            overflow-y: auto;
+            overflow: hidden;
             min-height: 100dvh;
             margin: 0;
-            padding-top: env(safe-area-inset-top, 6px);
-            padding-bottom: max(env(safe-area-inset-bottom), 180px);
         }
         canvas {
             box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.9);
@@ -40,108 +37,101 @@
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-start min-h-screen w-full px-3 py-2 box-border gap-2">
+<body class="relative w-full h-screen flex flex-col items-center justify-between box-border">
 
-    <!-- Top Header -->
-    <div class="w-full max-w-lg flex justify-between items-center bg-slate-800/95 backdrop-blur px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700 shrink-0">
-        <div>
-            <h1 class="text-sm md:text-base font-extrabold tracking-wider text-emerald-400 flex items-center gap-2">
-                <svg class="w-5 h-5 fill-emerald-400" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4h14v4z"/></svg>
-                PARKING MASTER
-            </h1>
-            <p id="level-indicator" class="text-xs md:text-sm text-slate-300 font-semibold">Mode: Single Car</p>
-        </div>
-        <div class="flex items-center gap-2">
-            <div class="flex gap-2 text-xs md:text-sm font-semibold">
-                <div class="bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-700">
-                    <span id="timer" class="text-cyan-400">0.0s</span>
-                </div>
-                <div class="bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-700">
-                    <span id="crashes" class="text-red-400">0/3</span>
-                </div>
-            </div>
-            <button id="lvls-btn" onclick="openLevelSelect()" class="bg-amber-600/95 active:bg-amber-500 text-white text-xs md:text-sm font-bold px-3 py-2 rounded-xl border border-amber-500 shadow-md">
-                LVLS
+    <!-- Full Screen Background Image for Main Splash Menu -->
+    <img id="full-splash-bg" src="cars.jpg" alt="Parking Master Background" class="fixed inset-0 w-full h-full object-cover object-center z-0 transition-opacity duration-300">
+
+    <!-- Main Splash Screen Overlay (Only buttons over full-screen background) -->
+    <div id="main-menu-overlay" class="fixed inset-0 z-20 flex flex-col items-center justify-end p-6 pb-12 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300">
+        <div id="mode-buttons" class="flex flex-col gap-3 w-full max-w-xs">
+            <button onclick="startMode('SINGLE')" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-black py-4 px-6 rounded-2xl shadow-2xl text-sm md:text-base transform active:scale-95 w-full uppercase tracking-wider border border-emerald-300/40">
+                SINGLE CAR (Endless)
             </button>
-            <button onclick="resetGame()" class="bg-rose-600/95 active:bg-rose-500 text-white text-xs md:text-sm font-bold px-3 py-2 rounded-xl border border-rose-500 shadow-md">
-                RESET
+            <button onclick="startMode('MULTI')" class="bg-cyan-500 active:bg-cyan-400 text-slate-950 font-black py-4 px-6 rounded-2xl shadow-2xl text-sm md:text-base transform active:scale-95 w-full uppercase tracking-wider border border-cyan-300/40">
+                MULTI CAR (Endless 4-Car)
+            </button>
+            <button id="resume-btn" onclick="resumeGame()" class="hidden bg-amber-500 active:bg-amber-400 text-slate-950 font-black py-4 px-6 rounded-2xl shadow-2xl text-sm md:text-base transform active:scale-95 w-full uppercase tracking-wider border border-amber-300/40">
+                RESUME GAME
             </button>
         </div>
     </div>
 
-    <!-- Main Game Canvas Container -->
-    <div class="relative bg-slate-900 p-2 md:p-3 rounded-3xl shadow-2xl border border-slate-800 shrink-0 w-full max-w-lg flex flex-col items-center">
-        <canvas id="gameCanvas" width="360" height="370" class="rounded-2xl bg-slate-950 block"></canvas>
-
-        <!-- Splash Screen Overlay -->
-        <div id="overlay" class="absolute inset-2 md:inset-3 flex flex-col items-center justify-between rounded-2xl p-4 text-center z-10 transition-all duration-300 overflow-hidden">
-            <!-- Background Image Artwork -->
-            <img id="splash-bg-img" src="cars.jpg" alt="Parking Master" class="absolute inset-0 w-full h-full object-cover object-center z-0">
-
-            <div id="overlay-content" class="relative z-10 w-full h-full flex flex-col items-center justify-between">
-                <!-- Header Text (Hidden on main splash menu; displayed during win/loss results) -->
-                <div id="overlay-header-container" class="w-full pt-1 hidden">
-                    <h2 id="overlay-title" class="text-xl md:text-2xl font-extrabold text-white mb-1">PARKING MASTER</h2>
-                    <p id="overlay-desc" class="text-xs text-slate-300 max-w-xs mx-auto leading-tight">Choose your game mode to start parking!</p>
-                </div>
-
-                <div class="flex-1"></div>
-
-                <!-- Bottom Buttons Container -->
-                <div class="w-full bg-transparent flex flex-col items-center pb-2 gap-2 mt-auto">
-                    <div id="mode-buttons" class="flex flex-col gap-2 w-full max-w-[260px]">
-                        <button onclick="startMode('SINGLE')" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-extrabold px-4 py-3 rounded-xl shadow-2xl text-xs md:text-sm transform active:scale-95 w-full border border-emerald-300/40">
-                            SINGLE CAR (Endless)
-                        </button>
-                        <button onclick="startMode('MULTI')" class="bg-cyan-500 active:bg-cyan-400 text-slate-950 font-extrabold px-4 py-3 rounded-xl shadow-2xl text-xs md:text-sm transform active:scale-95 w-full border border-cyan-300/40">
-                            MULTI CAR (Endless 4-Car)
-                        </button>
-                        <button id="resume-btn" onclick="resumeGame()" class="hidden bg-amber-500 active:bg-amber-400 text-slate-950 font-extrabold px-4 py-3 rounded-xl shadow-2xl text-xs md:text-sm transform active:scale-95 w-full border border-amber-300/40">
-                            RESUME GAME
-                        </button>
+    <!-- Active Gameplay UI (Hidden on splash menu) -->
+    <div id="game-ui" class="hidden relative z-10 w-full h-full flex flex-col items-center justify-start px-3 py-2 gap-2 overflow-y-auto">
+        <!-- Top Header -->
+        <div class="w-full max-w-lg flex justify-between items-center bg-slate-800/95 backdrop-blur px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700 shrink-0">
+            <div>
+                <h1 class="text-sm md:text-base font-extrabold tracking-wider text-emerald-400 flex items-center gap-2">
+                    <svg class="w-5 h-5 fill-emerald-400" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4h14v4z"/></svg>
+                    PARKING MASTER
+                </h1>
+                <p id="level-indicator" class="text-xs md:text-sm text-slate-300 font-semibold">Mode: Single Car</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="flex gap-2 text-xs md:text-sm font-semibold">
+                    <div class="bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-700">
+                        <span id="timer" class="text-cyan-400">0.0s</span>
                     </div>
-
-                    <div id="action-buttons" class="hidden flex gap-2 w-full max-w-[260px] justify-center">
-                        <button id="overlay-btn" onclick="handleOverlayButtonClick()" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-extrabold px-6 py-3 rounded-xl shadow-2xl text-xs md:text-sm transform active:scale-95 w-full border border-emerald-300/40">
-                            NEXT
-                        </button>
+                    <div class="bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-700">
+                        <span id="crashes" class="text-red-400">0/3</span>
                     </div>
                 </div>
+                <button id="lvls-btn" onclick="openLevelSelect()" class="bg-amber-600/95 active:bg-amber-500 text-white text-xs md:text-sm font-bold px-3 py-2 rounded-xl border border-amber-500 shadow-md">
+                    LVLS
+                </button>
+                <button onclick="resetGame()" class="bg-rose-600/95 active:bg-rose-500 text-white text-xs md:text-sm font-bold px-3 py-2 rounded-xl border border-rose-500 shadow-md">
+                    RESET
+                </button>
             </div>
         </div>
 
-        <!-- Level Selector Modal -->
-        <div id="level-modal" class="hidden absolute inset-2 md:inset-3 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-between rounded-2xl p-5 text-center z-20">
-            <div class="w-full">
-                <h2 id="modal-title" class="text-lg md:text-xl font-bold text-emerald-400 mb-1">Select Level</h2>
-                <p id="modal-desc" class="text-xs md:text-sm text-slate-400 mb-3">Jump to any level:</p>
-            </div>
-            <div id="level-grid" class="grid grid-cols-5 md:grid-cols-8 gap-2.5 w-full max-h-60 overflow-y-auto custom-scroll p-1">
-                <!-- Dynamically populated -->
-            </div>
-            <button onclick="closeLevelSelect()" class="mt-4 bg-slate-800 active:bg-slate-700 text-slate-200 text-xs md:text-sm font-bold px-6 py-3 rounded-xl border border-slate-700 w-full max-w-xs">
-                CLOSE
-            </button>
-        </div>
-    </div>
+        <!-- Main Game Canvas Container -->
+        <div class="relative bg-slate-900 p-2 md:p-3 rounded-3xl shadow-2xl border border-slate-800 shrink-0 w-full max-w-lg flex flex-col items-center">
+            <canvas id="gameCanvas" width="360" height="370" class="rounded-2xl bg-slate-950 block"></canvas>
 
-    <!-- Mobile Touch Controls -->
-    <div class="w-full max-w-lg flex flex-col gap-2 shrink-0 pb-4">
-        <div id="car-switcher" class="hidden grid grid-cols-4 gap-2 w-full">
-            <button onclick="switchCar(0)" id="switch-car-0" class="py-2 px-1 rounded-xl bg-red-600 text-white text-xs font-bold border-2 border-white shadow transition-all">🚗 RED</button>
-            <button onclick="switchCar(1)" id="switch-car-1" class="py-2 px-1 rounded-xl bg-cyan-600 text-white text-xs font-bold border-2 border-transparent shadow transition-all opacity-85">🚙 CYAN</button>
-            <button onclick="switchCar(2)" id="switch-car-2" class="py-2 px-1 rounded-xl bg-amber-600 text-white text-xs font-bold border-2 border-transparent shadow transition-all opacity-85">🚕 YELLOW</button>
-            <button onclick="switchCar(3)" id="switch-car-3" class="py-2 px-1 rounded-xl bg-purple-600 text-white text-xs font-bold border-2 border-transparent shadow transition-all opacity-85">🚐 PURPLE</button>
+            <!-- In-Game Result Overlay (Level Clear / Game Over) -->
+            <div id="in-game-overlay" class="hidden absolute inset-2 md:inset-3 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center rounded-2xl p-6 text-center z-10 transition-opacity duration-300">
+                <h2 id="overlay-title" class="text-2xl md:text-3xl font-extrabold text-white mb-2">Level Cleared!</h2>
+                <p id="overlay-desc" class="text-sm text-slate-300 max-w-xs mx-auto mb-6 leading-relaxed">Awesome parking!</p>
+                <button id="overlay-btn" onclick="handleOverlayButtonClick()" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-black px-8 py-3.5 rounded-xl shadow-lg text-sm md:text-base transform active:scale-95 uppercase tracking-wider">
+                    NEXT LEVEL
+                </button>
+            </div>
+
+            <!-- Level Selector Modal -->
+            <div id="level-modal" class="hidden absolute inset-2 md:inset-3 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-between rounded-2xl p-5 text-center z-20">
+                <div class="w-full">
+                    <h2 id="modal-title" class="text-lg md:text-xl font-bold text-emerald-400 mb-1">Select Level</h2>
+                    <p id="modal-desc" class="text-xs md:text-sm text-slate-400 mb-3">Jump to any level:</p>
+                </div>
+                <div id="level-grid" class="grid grid-cols-5 md:grid-cols-8 gap-2.5 w-full max-h-60 overflow-y-auto custom-scroll p-1">
+                    <!-- Dynamically populated -->
+                </div>
+                <button onclick="closeLevelSelect()" class="mt-4 bg-slate-800 active:bg-slate-700 text-slate-200 text-xs md:text-sm font-bold px-6 py-3 rounded-xl border border-slate-700 w-full max-w-xs">
+                    CLOSE
+                </button>
+            </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
-            <div class="grid grid-cols-2 gap-3">
-                <button id="btn-left" class="h-14 md:h-18 bg-slate-800/95 border border-slate-700 rounded-2xl flex items-center justify-center text-3xl md:text-4xl active:bg-emerald-500 active:text-slate-950 shadow-lg">◀</button>
-                <button id="btn-right" class="h-14 md:h-18 bg-slate-800/95 border border-slate-700 rounded-2xl flex items-center justify-center text-3xl md:text-4xl active:bg-emerald-500 active:text-slate-950 shadow-lg">▶</button>
+        <!-- Mobile Touch Controls -->
+        <div class="w-full max-w-lg flex flex-col gap-2 shrink-0 pb-4">
+            <div id="car-switcher" class="hidden grid grid-cols-4 gap-2 w-full">
+                <button onclick="switchCar(0)" id="switch-car-0" class="py-2 px-1 rounded-xl bg-red-600 text-white text-xs font-bold border-2 border-white shadow transition-all">🚗 RED</button>
+                <button onclick="switchCar(1)" id="switch-car-1" class="py-2 px-1 rounded-xl bg-cyan-600 text-white text-xs font-bold border-2 border-transparent shadow transition-all opacity-85">🚙 CYAN</button>
+                <button onclick="switchCar(2)" id="switch-car-2" class="py-2 px-1 rounded-xl bg-amber-600 text-white text-xs font-bold border-2 border-transparent shadow transition-all opacity-85">🚕 YELLOW</button>
+                <button onclick="switchCar(3)" id="switch-car-3" class="py-2 px-1 rounded-xl bg-purple-600 text-white text-xs font-bold border-2 border-transparent shadow transition-all opacity-85">🚐 PURPLE</button>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-                <button id="btn-down" class="h-14 md:h-18 bg-slate-800/95 border border-slate-700 rounded-2xl flex items-center justify-center text-xl md:text-2xl active:bg-rose-500 active:text-slate-950 shadow-lg font-bold">REV</button>
-                <button id="btn-up" class="h-14 md:h-18 bg-emerald-600/95 border border-emerald-500 rounded-2xl flex items-center justify-center text-xl md:text-2xl active:bg-emerald-400 active:text-slate-950 shadow-lg font-extrabold">GAS</button>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btn-left" class="h-14 md:h-18 bg-slate-800/95 border border-slate-700 rounded-2xl flex items-center justify-center text-3xl md:text-4xl active:bg-emerald-500 active:text-slate-950 shadow-lg">◀</button>
+                    <button id="btn-right" class="h-14 md:h-18 bg-slate-800/95 border border-slate-700 rounded-2xl flex items-center justify-center text-3xl md:text-4xl active:bg-emerald-500 active:text-slate-950 shadow-lg">▶</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btn-down" class="h-14 md:h-18 bg-slate-800/95 border border-slate-700 rounded-2xl flex items-center justify-center text-xl md:text-2xl active:bg-rose-500 active:text-slate-950 shadow-lg font-bold">REV</button>
+                    <button id="btn-up" class="h-14 md:h-18 bg-emerald-600/95 border border-emerald-500 rounded-2xl flex items-center justify-center text-xl md:text-2xl active:bg-emerald-400 active:text-slate-950 shadow-lg font-extrabold">GAS</button>
+                </div>
             </div>
         </div>
     </div>
@@ -524,7 +514,12 @@
                         if (gameMode === 'SINGLE') loadSingleLevel(i);
                         else loadMultiLevel(i);
                         gameState = 'PLAYING';
-                        document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
+                        
+                        document.getElementById('main-menu-overlay').classList.add('opacity-0', 'pointer-events-none');
+                        document.getElementById('full-splash-bg').classList.add('opacity-0');
+                        document.getElementById('game-ui').classList.remove('hidden');
+                        document.getElementById('in-game-overlay').classList.add('hidden');
+
                         if (animationFrameId) cancelAnimationFrame(animationFrameId);
                         animationFrameId = requestAnimationFrame(gameLoop);
                     };
@@ -545,8 +540,13 @@
         function startMode(mode) {
             initAudio();
             gameMode = mode;
-            document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
             
+            // Hide splash screen background & overlay, show main game UI
+            document.getElementById('main-menu-overlay').classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('full-splash-bg').classList.add('opacity-0');
+            document.getElementById('game-ui').classList.remove('hidden');
+            document.getElementById('in-game-overlay').classList.add('hidden');
+
             if (gameMode === 'SINGLE') {
                 document.getElementById('car-switcher').classList.add('hidden');
                 document.getElementById('lvls-btn').classList.remove('hidden');
@@ -591,44 +591,25 @@
             touchInputs.up = false; touchInputs.down = false; touchInputs.left = false; touchInputs.right = false;
             if (gameMode === 'SINGLE') loadSingleLevel(currentLevelIndex); else loadMultiLevel(multiLevelIndex);
             gameState = 'PLAYING';
-            document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('in-game-overlay').classList.add('hidden');
             animationFrameId = requestAnimationFrame(gameLoop);
         }
 
-        function showOverlay(title, desc, btnText) {
-            const overlay = document.getElementById('overlay');
-            const bgImg = document.getElementById('splash-bg-img');
-            const headerContainer = document.getElementById('overlay-header-container');
-
+        function showInGameOverlay(title, desc, btnText) {
+            const overlay = document.getElementById('in-game-overlay');
             document.getElementById('overlay-title').innerText = title;
             document.getElementById('overlay-desc').innerText = desc;
             document.getElementById('overlay-btn').innerText = btnText;
-
-            if (headerContainer) headerContainer.classList.remove('hidden');
-            if (bgImg) bgImg.classList.add('hidden');
-            overlay.classList.add('bg-slate-950/90', 'backdrop-blur-md');
-
-            document.getElementById('mode-buttons').classList.add('hidden');
-            document.getElementById('action-buttons').classList.remove('hidden');
-            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.remove('hidden');
         }
 
         function showMenuOverlay() {
-            const overlay = document.getElementById('overlay');
-            const bgImg = document.getElementById('splash-bg-img');
-            const headerContainer = document.getElementById('overlay-header-container');
-
-            if (headerContainer) headerContainer.classList.add('hidden');
-            if (bgImg) bgImg.classList.remove('hidden');
-            overlay.classList.remove('bg-slate-950/90', 'backdrop-blur-md');
-
-            document.getElementById('mode-buttons').classList.remove('hidden');
-            document.getElementById('action-buttons').classList.add('hidden');
-
+            document.getElementById('full-splash-bg').classList.remove('opacity-0');
+            document.getElementById('main-menu-overlay').classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('game-ui').classList.add('hidden');
+            
             if (currentLevelIndex > 0 || multiLevelIndex > 0) document.getElementById('resume-btn').classList.remove('hidden');
             else document.getElementById('resume-btn').classList.add('hidden');
-
-            overlay.classList.remove('opacity-0', 'pointer-events-none');
         }
 
         function handleOverlayButtonClick() {
@@ -638,7 +619,7 @@
                 if (gameMode === 'SINGLE') { loadSingleLevel(currentLevelIndex + 1); } 
                 else { loadMultiLevel(multiLevelIndex + 1); }
                 gameState = 'PLAYING';
-                document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
+                document.getElementById('in-game-overlay').classList.add('hidden');
                 if (animationFrameId) cancelAnimationFrame(animationFrameId);
                 animationFrameId = requestAnimationFrame(gameLoop);
             }
@@ -710,7 +691,7 @@
                 c.speed = -c.speed * 0.3;
                 crashes++;
                 document.getElementById('crashes').innerText = `${crashes}/${maxCrashes}`;
-                if (crashes >= maxCrashes) { gameState = 'GAMEOVER'; showOverlay('Crashed!', 'Too many collisions! Try again.', 'TRY AGAIN'); return; }
+                if (crashes >= maxCrashes) { gameState = 'GAMEOVER'; showInGameOverlay('Crashed!', 'Too many collisions! Try again.', 'TRY AGAIN'); return; }
             }
 
             elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -728,7 +709,7 @@
                         gameState = 'LEVEL_CLEAR';
                         if (currentLevelIndex >= maxLevelReached) { maxLevelReached = currentLevelIndex + 1; localStorage.setItem('maxLevelReached', maxLevelReached); }
                         localStorage.setItem('currentLevelIndex', currentLevelIndex + 1);
-                        showOverlay(`Level ${currentLevelIndex + 1} Cleared!`, `Awesome parking! Time: ${elapsedTime}s`, 'NEXT LEVEL');
+                        showInGameOverlay(`Level ${currentLevelIndex + 1} Cleared!`, `Awesome parking! Time: ${elapsedTime}s`, 'NEXT LEVEL');
                     } else {
                         c.parked = true; targetBay.parked = true; c.speed = 0;
                         c.x = targetBay.x + targetBay.width / 2; c.y = targetBay.y + targetBay.height / 2; c.angle = targetBay.angle;
@@ -741,7 +722,7 @@
                             gameState = 'LEVEL_CLEAR';
                             if (multiLevelIndex >= maxMultiLevelReached) { maxMultiLevelReached = multiLevelIndex + 1; localStorage.setItem('maxMultiLevelReached', maxMultiLevelReached); }
                             localStorage.setItem('multiLevelIndex', multiLevelIndex + 1);
-                            showOverlay(`Multi Lvl ${multiLevelIndex + 1} Cleared!`, `Amazing job parking all 4 cars! Time: ${elapsedTime}s`, 'NEXT LEVEL');
+                            showInGameOverlay(`Multi Lvl ${multiLevelIndex + 1} Cleared!`, `Amazing job parking all 4 cars! Time: ${elapsedTime}s`, 'NEXT LEVEL');
                         } else {
                             for (let i = 0; i < 4; i++) if (!multiCars[i].parked) { switchCar(i); break; }
                         }
@@ -811,7 +792,6 @@
             multiLevelIndex = parseInt(localStorage.getItem('multiLevelIndex')) || 0;
             maxMultiLevelReached = parseInt(localStorage.getItem('maxMultiLevelReached')) || 0;
             showMenuOverlay();
-            draw();
         });
     </script>
 </body>
