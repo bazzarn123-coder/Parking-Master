@@ -73,38 +73,39 @@
     <div class="relative bg-slate-900 p-2 md:p-3 rounded-3xl shadow-2xl border border-slate-800 shrink-0 w-full max-w-lg flex flex-col items-center">
         <canvas id="gameCanvas" width="360" height="370" class="rounded-2xl bg-slate-950 block"></canvas>
 
-        <!-- Overlays (Transparent Background for containers, solid buttons) -->
-        <div id="overlay" class="absolute inset-2 md:inset-3 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-between rounded-2xl p-4 text-center z-10 transition-opacity duration-300 overflow-y-auto">
-            
-            <!-- Header Text (Hidden during splash menu to save space, or shown compact) -->
-            <div id="overlay-header-container" class="w-full pt-1">
-                <h2 id="overlay-title" class="text-xl md:text-2xl font-extrabold text-white mb-1">PARKING MASTER</h2>
-                <p id="overlay-desc" class="text-xs text-slate-300 max-w-xs mx-auto leading-tight">Choose your game mode to start parking!</p>
-            </div>
+        <!-- Splash Screen Overlay -->
+        <div id="overlay" class="absolute inset-2 md:inset-3 flex flex-col items-center justify-between rounded-2xl p-4 text-center z-10 transition-all duration-300 overflow-hidden">
+            <!-- Background Image Artwork -->
+            <img id="splash-bg-img" src="cars.jpg" alt="Parking Master" class="absolute inset-0 w-full h-full object-cover object-center z-0">
 
-            <!-- Splash Screen Picture Preview Integration -->
-            <div id="splash-image-container" class="my-auto py-1 flex justify-center items-center w-full">
-                <img src="parking.png" alt="Parking Master Splash" class="max-h-48 md:max-h-56 w-auto rounded-xl shadow-2xl border border-slate-700/60 object-contain">
-            </div>
-            
-            <!-- Bottom Buttons Container (Transparent back, solid buttons shifted down) -->
-            <div class="w-full bg-transparent flex flex-col items-center pb-2 gap-2 mt-auto">
-                <div id="mode-buttons" class="flex flex-col gap-2 w-full max-w-[260px]">
-                    <button onclick="startMode('SINGLE')" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl shadow-lg text-xs md:text-sm transform active:scale-95 w-full">
-                        SINGLE CAR (Endless)
-                    </button>
-                    <button onclick="startMode('MULTI')" class="bg-cyan-500 active:bg-cyan-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl shadow-lg text-xs md:text-sm transform active:scale-95 w-full">
-                        MULTI CAR (Endless 4-Car)
-                    </button>
-                    <button id="resume-btn" onclick="resumeGame()" class="hidden bg-amber-500 active:bg-amber-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl shadow-lg text-xs md:text-sm transform active:scale-95 w-full">
-                        RESUME GAME
-                    </button>
+            <div id="overlay-content" class="relative z-10 w-full h-full flex flex-col items-center justify-between">
+                <!-- Header Text (Hidden on main splash menu; displayed during win/loss results) -->
+                <div id="overlay-header-container" class="w-full pt-1 hidden">
+                    <h2 id="overlay-title" class="text-xl md:text-2xl font-extrabold text-white mb-1">PARKING MASTER</h2>
+                    <p id="overlay-desc" class="text-xs text-slate-300 max-w-xs mx-auto leading-tight">Choose your game mode to start parking!</p>
                 </div>
 
-                <div id="action-buttons" class="hidden flex gap-2 w-full max-w-[260px] justify-center">
-                    <button id="overlay-btn" onclick="handleOverlayButtonClick()" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-extrabold px-6 py-3 rounded-xl shadow-lg text-xs md:text-sm transform active:scale-95 w-full">
-                        NEXT
-                    </button>
+                <div class="flex-1"></div>
+
+                <!-- Bottom Buttons Container -->
+                <div class="w-full bg-transparent flex flex-col items-center pb-2 gap-2 mt-auto">
+                    <div id="mode-buttons" class="flex flex-col gap-2 w-full max-w-[260px]">
+                        <button onclick="startMode('SINGLE')" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-extrabold px-4 py-3 rounded-xl shadow-2xl text-xs md:text-sm transform active:scale-95 w-full border border-emerald-300/40">
+                            SINGLE CAR (Endless)
+                        </button>
+                        <button onclick="startMode('MULTI')" class="bg-cyan-500 active:bg-cyan-400 text-slate-950 font-extrabold px-4 py-3 rounded-xl shadow-2xl text-xs md:text-sm transform active:scale-95 w-full border border-cyan-300/40">
+                            MULTI CAR (Endless 4-Car)
+                        </button>
+                        <button id="resume-btn" onclick="resumeGame()" class="hidden bg-amber-500 active:bg-amber-400 text-slate-950 font-extrabold px-4 py-3 rounded-xl shadow-2xl text-xs md:text-sm transform active:scale-95 w-full border border-amber-300/40">
+                            RESUME GAME
+                        </button>
+                    </div>
+
+                    <div id="action-buttons" class="hidden flex gap-2 w-full max-w-[260px] justify-center">
+                        <button id="overlay-btn" onclick="handleOverlayButtonClick()" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-extrabold px-6 py-3 rounded-xl shadow-2xl text-xs md:text-sm transform active:scale-95 w-full border border-emerald-300/40">
+                            NEXT
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -596,26 +597,37 @@
 
         function showOverlay(title, desc, btnText) {
             const overlay = document.getElementById('overlay');
+            const bgImg = document.getElementById('splash-bg-img');
+            const headerContainer = document.getElementById('overlay-header-container');
+
             document.getElementById('overlay-title').innerText = title;
             document.getElementById('overlay-desc').innerText = desc;
             document.getElementById('overlay-btn').innerText = btnText;
+
+            if (headerContainer) headerContainer.classList.remove('hidden');
+            if (bgImg) bgImg.classList.add('hidden');
+            overlay.classList.add('bg-slate-950/90', 'backdrop-blur-md');
+
             document.getElementById('mode-buttons').classList.add('hidden');
             document.getElementById('action-buttons').classList.remove('hidden');
-            document.getElementById('splash-image-container').classList.add('hidden'); // Hide splash during win/lose overlays
             overlay.classList.remove('opacity-0', 'pointer-events-none');
         }
 
         function showMenuOverlay() {
             const overlay = document.getElementById('overlay');
-            document.getElementById('overlay-title').innerText = 'PARKING MASTER';
-            document.getElementById('overlay-desc').innerText = 'Choose your game mode to start parking!';
+            const bgImg = document.getElementById('splash-bg-img');
+            const headerContainer = document.getElementById('overlay-header-container');
+
+            if (headerContainer) headerContainer.classList.add('hidden');
+            if (bgImg) bgImg.classList.remove('hidden');
+            overlay.classList.remove('bg-slate-950/90', 'backdrop-blur-md');
+
             document.getElementById('mode-buttons').classList.remove('hidden');
             document.getElementById('action-buttons').classList.add('hidden');
-            document.getElementById('splash-image-container').classList.remove('hidden'); // Show splash picture on main menu
-            
+
             if (currentLevelIndex > 0 || multiLevelIndex > 0) document.getElementById('resume-btn').classList.remove('hidden');
             else document.getElementById('resume-btn').classList.add('hidden');
-            
+
             overlay.classList.remove('opacity-0', 'pointer-events-none');
         }
 
